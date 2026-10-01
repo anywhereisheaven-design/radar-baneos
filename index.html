@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Radar de baneos</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#0a0618;--line:#3a2468;--text:#ece8ff;--dim:#9a8fc4;--a:#27f0ff;--b:#ff2bd6;--ok:#3dffa0;--warn:#ffd23f;--bad:#ff3b5c}
+[data-th=rojo]{--a:#ff3b4e;--b:#ff9a3b}
+[data-th=verde]{--a:#3dff8b;--b:#b6ff3d}
+[data-th=azul]{--a:#3d8bff;--b:#27f0ff}
+[data-th=morado]{--a:#a66bff;--b:#ff2bd6}
+[data-th=rosa]{--a:#ff5fc8;--b:#ffb3e6}
+[data-th=blanco]{--a:#f2f2f2;--b:#9aa0b4}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px);color-scheme:dark}
+body{margin:0;min-height:100vh;color:var(--text);font:500 17px/1.4 Rajdhani,system-ui,sans-serif;background:radial-gradient(circle at 85% -5%,color-mix(in srgb,var(--b) 25%,transparent),transparent 50%),radial-gradient(circle at 0 35%,color-mix(in srgb,var(--a) 14%,transparent),transparent 45%),var(--bg)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px;position:relative}
+h1{font:900 30px/1.05 Orbitron,system-ui,sans-serif;margin:6px 0 2px;text-shadow:2px 0 var(--b),-2px 0 var(--a)}
+h2,summary{font:700 15px Orbitron,system-ui,sans-serif;margin:0 0 10px;color:var(--a)}
+summary{cursor:pointer;margin:0;min-height:32px}
+.sub{color:var(--dim);margin:0}
+.panel{background:linear-gradient(180deg,#170e30,#0f0820);border:1px solid var(--line);border-left:3px solid var(--a);padding:14px;margin-top:16px;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.gauge{text-align:center;color:var(--c,var(--ok))}
+.gauge svg{width:100%;max-width:300px;display:block;margin:0 auto}
+.track{fill:none;stroke:#2a1a4d;stroke-width:14}
+#arc{fill:none;stroke:currentColor;stroke-width:14;stroke-dasharray:0 251.3;transition:stroke-dasharray .5s;filter:drop-shadow(0 0 6px currentColor)}
+#num{font:900 34px Orbitron,system-ui,sans-serif;fill:currentColor}
+#lvl{font:900 24px Orbitron,system-ui,sans-serif;margin:0;text-shadow:0 0 12px currentColor}
+#lvl.glitch{animation:gl .4s steps(2)}
+@keyframes gl{0%{transform:translate(-4px,1px);text-shadow:3px 0 var(--b),-3px 0 var(--a)}50%{transform:translate(4px,-1px)}100%{transform:none}}
+#advice{margin:8px 0 0;color:var(--text)}
+#ban{background:var(--bad);color:#0a0618;font-weight:600;padding:10px 12px;margin-top:12px;cursor:pointer}
+.ev,.src,.sig{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+.ev:first-child,.src:first-child,.sig:first-child{border-top:0}
+.ev i{flex:none;font:700 14px Orbitron,sans-serif;font-style:normal;color:var(--warn);min-width:34px}
+.ev b,.sig b{display:block;font-weight:600;overflow-wrap:anywhere}
+small{color:var(--dim);font-size:15px}
+.src{justify-content:space-between}
+.sig{cursor:pointer;align-items:flex-start}
+.sig input{width:22px;height:22px;margin-top:2px;accent-color:var(--b);flex:none}
+.stale{color:var(--warn)!important}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.btn,.chip,select{font:600 15px Rajdhani,system-ui,sans-serif;background:transparent;color:var(--a);border:1px solid var(--a);padding:6px 11px;min-height:40px;border-radius:2px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.chip{color:var(--text);border-color:var(--s)}
+.btn[aria-pressed=true]{background:var(--a);color:#0a0618}
+.chip[aria-pressed=true]{background:var(--s);color:#0a0618}
+select{background:#0b0620}
+label.f{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+#ch{width:100%;height:auto;display:block;margin-top:10px}
+.btn:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Radar de baneos</h1>
+  <p class="sub" id="st">Iniciando…</p>
+  <div id="ban" role="alert" hidden></div>
+
+  <section class="panel gauge" id="gauge" aria-live="polite">
+    <svg viewBox="0 0 200 120" role="img" aria-label="Medidor de peligro">
+      <path class="track" d="M20 100A80 80 0 0 1 180 100"/>
+      <path id="arc" d="M20 100A80 80 0 0 1 180 100"/>
+      <text id="num" x="100" y="96" text-anchor="middle">0%</text>
+    </svg>
+    <p id="lvl">TRANQUILO</p>
+    <p id="advice"></p>
+  </section>
+
+  <section class="panel"><h2>Qué está pasando</h2><div id="ev"></div></section>
+
+  <section class="panel">
+    <h2>Historial de peligro</h2>
+    <div class="row" id="tabs" style="margin:0"></div>
+    <svg id="ch" viewBox="0 0 300 110" role="img" aria-label="Gráfica del porcentaje de peligro"></svg>
+    <p class="sub" id="stat"></p>
+  </section>
+
+  <section class="panel"><h2>Señales manuales</h2><div id="sigs"></div></section>
+
+  <section class="panel">
+    <h2>Fuentes que vigila</h2><div id="srcs"></div>
+    <p class="sub stale" id="note" hidden style="margin-top:10px">No se pudo conectar con ninguna fuente desde aquí: los visores como este bloquean conexiones externas. Para el modo automático, aloja este archivo en tu propio sitio (por ejemplo, Netlify Drop). Mientras, usa las señales manuales.</p>
+  </section>
+
+  <details class="panel"><summary>⚙ Configuración</summary>
+    <p class="sub" style="margin-top:10px">Color del tema</p>
+    <div class="row" id="themes"></div>
+    <label class="f">Revisar fuentes cada
+      <select id="iv"><option value="5">5 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 hora</option></select></label>
+    <label class="f">Avisarme desde
+      <select id="th"><option value="25">25% (precaución)</option><option value="40">40%</option><option value="60">60% (peligro)</option></select></label>
+    <div class="row"><button class="btn" id="perm">Activar notificaciones</button><button class="btn" id="test">Probar alerta</button></div>
+    <p class="sub" id="pst" style="margin-top:8px"></p>
+  </details>
+</main>
+<script>
+const KEY='radar-baneos-v2',$=id=>document.getElementById(id),
+mk=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const TH=[['default','Predeterminado','#27f0ff'],['rojo','Rojo','#ff3b4e'],['verde','Verde','#3dff8b'],['azul','Azul','#3d8bff'],['morado','Morado','#a66bff'],['rosa','Rosa','#ff5fc8'],['blanco','Blanco','#f2f2f2']];
+const SIGS=[
+ ['v','Roblox sacó una versión nueva del cliente','Suele ir seguida de cambios en el anticheat',35],
+ ['p','Un ejecutor avisó "parcheado" o "no usar"','Míralo en su web o en su Discord',30],
+ ['d','Delta se actualizó hace pocos días','Una actualización reciente suele venir de un parche',15],
+ ['r','Hay reportes de baneos en la comunidad','Varios mensajes recientes de "me banearon"',20]];
+const SRC=[
+ {id:'st',n:'Estado de Roblox',k:'st',u:'https://status.roblox.com/api/v2/summary.json',o:'https://status.roblox.com'},
+ {id:'gn',n:'Noticias (Google News)',k:'rss',u:'https://news.google.com/rss/search?q=roblox+(%22ban+wave%22+OR+baneos+OR+hyperion+OR+%22delta+executor%22)+when:7d&hl=es-419&gl=MX&ceid=MX:es-419',o:'https://news.google.com/search?q=roblox%20ban%20wave'},
+ {id:'rd',n:'Reddit',k:'rd',u:'https://www.reddit.com/search.json?q=roblox+ban+wave+OR+delta+executor&sort=new&t=week&limit=30',o:'https://www.reddit.com/search/?q=roblox%20ban%20wave&sort=new'},
+ {id:'g2',n:'Noticias en inglés (Google News)',k:'rss',u:'https://news.google.com/rss/search?q=roblox+(%22ban+wave%22+OR+byfron+OR+hyperion)+when:7d&hl=en-US&gl=US&ceid=US:en',o:'https://news.google.com/search?q=roblox%20byfron%20ban%20wave'},
+ {id:'g3',n:'Delta y ejecutores (Google News)',k:'rss',u:'https://news.google.com/rss/search?q=(%22delta+executor%22+OR+roblox+executor)+(patched+OR+update+OR+detected)+when:7d&hl=en-US&gl=US&ceid=US:en',o:'https://news.google.com/search?q=delta%20executor%20roblox'},
+ {id:'bg',n:'Bing Noticias',k:'rss',u:'https://www.bing.com/news/search?format=rss&q=roblox+ban+wave+OR+byfron+OR+%22delta+executor%22',o:'https://www.bing.com/news/search?q=roblox+ban+wave'},
+ {id:'r2',n:'Reddit (Delta)',k:'rd',u:'https://www.reddit.com/search.json?q=%22delta+executor%22&sort=new&t=week&limit=30',o:'https://www.reddit.com/search/?q=%22delta%20executor%22&sort=new'}];
+const PX='https://api.allorigins.win/raw?url=';
+let S={sig:{},h:[],ev:[],th:40,iv:15,theme:'default',ln:0,last:0,ok:{},auto:0},prev=null,per=864e5,busy=0;
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const ago=t=>{const m=Math.max(1,Math.round((Date.now()-t)/6e4));return m<60?'hace '+m+' min':m<1440?'hace '+Math.round(m/60)+' h':'hace '+Math.round(m/1440)+' d'};
+const manual=()=>SIGS.reduce((a,s)=>a+(S.sig[s[0]]?s[3]:0),0),total=()=>Math.min(100,Math.round(S.auto)+manual());
+function lv(n){
+ if(n>=60)return['PELIGRO','var(--bad)','Riesgo alto. No ejecutes hasta que el ejecutor confirme que ya está actualizado, y no uses tu cuenta principal.'];
+ if(n>=25)return['PRECAUCIÓN','var(--warn)','Hay señales. Espera 2 o 3 días antes de ejecutar, o usa solo una cuenta secundaria.'];
+ return['TRANQUILO','var(--ok)','Sin señales fuertes. Uso normal, mejor con cuenta secundaria.'];
+}
+/* Motor de puntuación: palabras clave x frescura de la noticia */
+const KW=[[/ban ?waves?|oleadas? de ban|banwave/i,25],[/baneo|banead|banned|\bbans?\b/i,8],[/patch|parche|detected|detectad/i,15],[/hyperion|byfron|anti-?cheat/i,10],[/delta/i,5],[/updat|actualiz|version|mantenim|maintenance/i,6]];
+const fr=d=>{const a=Date.now()-d;return a<864e5?1:a<2592e5?.6:a<6048e5?.3:0};
+const score=(t,d,m)=>Math.min(30,Math.max(m||0,KW.reduce((a,k)=>a+(k[0].test(t)?k[1]:0),0)))*fr(d);
+const P={
+ st:t=>{const j=JSON.parse(t);return[...(j.incidents||[]),...(j.scheduled_maintenances||[])].map(i=>({t:i.name,u:i.shortlink,d:Date.parse(i.updated_at||i.created_at),m:12}))},
+ rss:t=>[...new DOMParser().parseFromString(t,'text/xml').querySelectorAll('item')].map(i=>({t:i.querySelector('title')?.textContent||'',u:i.querySelector('link')?.textContent||'',d:Date.parse(i.querySelector('pubDate')?.textContent)})),
+ rd:t=>JSON.parse(t).data.children.map(c=>({t:c.data.title,u:'https://www.reddit.com'+c.data.permalink,d:c.data.created_utc*1e3}))};
+async function get(u){for(const f of[u,PX+encodeURIComponent(u)]){try{const r=await fetch(f,{signal:AbortSignal.timeout(9000)});if(r.ok)return await r.text()}catch(e){}}throw 0}
+
+async function scan(){
+ if(busy)return;busy=1;$('st').textContent='Escaneando fuentes…';
+ const all=[];let ok=0;
+ await Promise.all(SRC.map(async s=>{try{P[s.k](await get(s.u)).forEach(i=>all.push({...i,s:s.n}));S.ok[s.id]=1;ok++}catch(e){S.ok[s.id]=0}}));
+ if(ok){const seen=new Set();
+  S.ev=all.map(i=>({t:String(i.t).slice(0,140),u:/^https?:\/\//.test(i.u||'')?i.u:'https://status.roblox.com',s:i.s,d:i.d,w:Math.round(score(i.t,i.d,i.m))})).filter(i=>i.w>0&&!seen.has(i.t)&&seen.add(i.t)).sort((a,b)=>b.w-a.w).slice(0,30);
+  S.auto=Math.min(100,1.2*S.ev.reduce((a,e,i)=>a+e.w*.8**i,0))}
+ S.last=Date.now();hist();save();draw();alertIf();busy=0;
+}
+function hist(){S.h.push({t:Date.now(),v:total()});if(S.h.length>1500)S.h.splice(0,S.h.length-1500)}
+function alertIf(){
+ const v=total();
+ if(v<S.th){S.ln=0;save();return}
+ if(S.ln&&v<S.ln+10)return;
+ S.ln=v;save();
+ const[t,,a]=lv(v),top=S.ev[0];
+ notify('RADAR '+v+'% · '+t,(top?top.t+'. ':'')+a);
+}
+function notify(title,body){
+ const b=$('ban');b.hidden=false;b.textContent=title+' — '+body;
+ try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}
+ try{if(window.Notification&&Notification.permission==='granted')new Notification(title,{body,tag:'radar'})}
+ catch(e){try{navigator.serviceWorker.getRegistration().then(r=>r&&r.showNotification(title,{body}))}catch(e2){}}
+}
+function gauge(){
+ const n=total(),[t,c,a]=lv(n);
+ $('arc').style.strokeDasharray=n*2.513+' 251.3';$('num').textContent=n+'%';
+ $('gauge').style.setProperty('--c',c);$('lvl').textContent=t;$('advice').textContent=a;
+ if(prev!==null&&prev!==t){const l=$('lvl');l.classList.remove('glitch');void l.offsetWidth;l.classList.add('glitch')}
+ prev=t;
+}
+function feed(){
+ const b=$('ev');b.textContent='';
+ if(!S.ev.length){b.append(mk('p','sub','Sin noticias de riesgo por ahora.'));return}
+ S.ev.slice(0,8).forEach(e=>{
+  const r=mk('a','ev');r.href=e.u;r.target='_blank';r.rel='noopener noreferrer';
+  const d=mk('span');const t=mk('b',0,e.t);d.append(t,mk('small',0,e.s+' · '+ago(e.d)));
+  r.append(mk('i',0,'+'+e.w),d);b.append(r)});
+}
+function srcs(){
+ const b=$('srcs');b.textContent='';
+ SRC.forEach(s=>{
+  const r=mk('div','src'),d=mk('div'),o=S.ok[s.id];
+  d.append(mk('b',0,s.n),mk('small',o===0?'stale':'',o===undefined?'Pendiente':o?'Conectada':'Sin acceso'));
+  const a=mk('a','btn','Abrir');a.href=s.o;a.target='_blank';a.rel='noopener noreferrer';
+  r.append(d,a);b.append(r)});
+ const v=Object.values(S.ok);$('note').hidden=!v.length||v.some(Boolean);
+}
+function chart(){
+ const now=Date.now(),pts=S.h.filter(p=>p.t>now-per),X=t=>((t-(now-per))/per*300).toFixed(1),Y=v=>(108-v*1.06).toFixed(1);
+ let g='<path d="M0 '+Y(25)+'H300M0 '+Y(60)+'H300" stroke="var(--line)" stroke-dasharray="3 4" fill="none"/>';
+ if(pts.length>1){const d=pts.map((p,i)=>(i?'L':'M')+X(p.t)+' '+Y(p.v)).join('');
+  g+='<path d="'+d+'L'+X(pts[pts.length-1].t)+' 108L'+X(pts[0].t)+' 108Z" fill="var(--a)" opacity=".12"/><path d="'+d+'" fill="none" stroke="var(--a)" stroke-width="2"/>'}
+ $('ch').innerHTML=g;
+ const vs=pts.map(p=>p.v);
+ $('stat').textContent=vs.length?'Máx '+Math.max(...vs)+'% · Prom '+Math.round(vs.reduce((a,b)=>a+b,0)/vs.length)+'% · '+vs.length+' lecturas':'Aún sin datos: la gráfica se llena sola con cada escaneo.';
+}
+function sigs(){
+ const box=$('sigs');box.textContent='';
+ SIGS.forEach(s=>{
+  const l=mk('label','sig'),i=mk('input');i.type='checkbox';i.checked=!!S.sig[s[0]];
+  i.onchange=()=>{S.sig[s[0]]=i.checked;hist();save();draw();alertIf()};
+  const d=mk('span');d.append(mk('b',0,s[1]),mk('small',0,s[2]));l.append(i,d);box.append(l)});
+}
+function draw(){gauge();feed();chart();srcs()}
+
+/* Configuración */
+document.documentElement.dataset.th=S.theme;
+const tb=$('themes');
+TH.forEach(x=>{const b=mk('button','chip',x[1]);b.style.setProperty('--s',x[2]);b.setAttribute('aria-pressed',S.theme===x[0]);
+ b.onclick=()=>{S.theme=x[0];document.documentElement.dataset.th=x[0];[...tb.children].forEach(c=>c.setAttribute('aria-pressed',c===b));save()};tb.append(b)});
+[['24 h',864e5],['7 días',6048e5],['30 días',2592e6]].forEach((x,i,arr)=>{
+ const b=mk('button','btn',x[0]);b.setAttribute('aria-pressed',x[1]===per);
+ b.onclick=()=>{per=x[1];[...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b));chart()};$('tabs').append(b)});
+$('iv').value=S.iv;$('th').value=S.th;
+$('iv').onchange=e=>{S.iv=+e.target.value;save()};
+$('th').onchange=e=>{S.th=+e.target.value;S.ln=0;save()};
+$('pst').textContent=window.Notification?'Notificaciones: '+({granted:'activadas',denied:'bloqueadas',default:'sin decidir'}[Notification.permission]):'Este navegador no permite notificaciones.';
+$('perm').onclick=async()=>{try{const r=await Notification.requestPermission();$('pst').textContent='Notificaciones: '+({granted:'activadas',denied:'bloqueadas',default:'sin decidir'}[r])}catch(e){$('pst').textContent='Este navegador no permite notificaciones aquí.'}};
+$('test').onclick=()=>notify('PRUEBA · RADAR '+total()+'%','Así se verá una alerta en tu teléfono.');
+$('ban').onclick=e=>{e.currentTarget.hidden=true};
+
+/* Automático: escanea al abrir y cada N minutos mientras la página esté abierta */
+sigs();draw();
+setInterval(()=>{
+ const r=Math.round((S.last+S.iv*6e4-Date.now())/1e3);
+ if(r<=0){scan();return}
+ $('st').textContent='Auto-escaneo cada '+S.iv+' min · último '+ago(S.last)+' · próximo en '+Math.floor(r/60)+':'+String(r%60).padStart(2,'0');
+},1000);
+</script>
+</body>
+</html>
